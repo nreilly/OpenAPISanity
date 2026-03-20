@@ -75,6 +75,32 @@ If you want Swift OpenAPI Generator to consume the sanitised file automatically,
 step is usually to wrap both operations in a single plugin or script-driven build step.
 This package currently provides the sanitiser as a separate build tool plugin.
 
+## Xcode Pre-Build Script
+
+If you are also using Swift OpenAPI Generator's build tool plugin, use a scheme pre-action
+or external build step instead of a target build phase. The generator validates the
+presence of `openapi.json` before target build phases run.
+
+This repository includes a helper script:
+
+[`generate-openapi.sh`](/Users/nathan/Documents/code/OpenAPISanity/Scripts/generate-openapi.sh)
+
+Example invocation:
+
+```sh
+"$SRCROOT/../OpenAPISanity/Scripts/generate-openapi.sh" \
+  "$SRCROOT/Path/To/openapi.json.nullfix" \
+  "$SRCROOT/Path/To/openapi.json" \
+  "$SRCROOT/../OpenAPISanity"
+```
+
+Recommended Xcode setup:
+
+- keep `openapi.json.nullfix` as the edited source file
+- generate `openapi.json` into the same source directory before the build starts
+- add `openapi.json` to the Xcode target so `OpenAPIGenerator` can discover it
+- run the script from a scheme pre-action, or from CI before `xcodebuild`
+
 ## Transformation Rules
 
 - `oneOf` branches matching `{ "type": "null" }` are removed.
