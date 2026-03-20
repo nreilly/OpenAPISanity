@@ -76,3 +76,28 @@ public struct OpenAPISanitizer {
     return merged
   }
 }
+
+public enum OpenAPISanitizerCommand {
+  public static func run(arguments: [String]) throws {
+    guard arguments.count == 3 else {
+      throw OpenAPISanitizerCommandError.invalidArguments
+    }
+
+    let inputURL = URL(fileURLWithPath: arguments[1])
+    let outputURL = URL(fileURLWithPath: arguments[2])
+    let data = try Data(contentsOf: inputURL)
+    let rewritten = try OpenAPISanitizer().rewrite(data: data)
+    try rewritten.write(to: outputURL)
+  }
+}
+
+public enum OpenAPISanitizerCommandError: LocalizedError {
+  case invalidArguments
+
+  public var errorDescription: String? {
+    switch self {
+    case .invalidArguments:
+      "Usage: openapi-sanitizer input.json output.json"
+    }
+  }
+}

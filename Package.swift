@@ -9,8 +9,12 @@ let package = Package(
   ],
   products: [
     .executable(
-      name: "openapi-sanitizer",
+      name: "OpenAPISanitizerCLI",
       targets: ["OpenAPISanitizerCLI"]
+    ),
+    .executable(
+      name: "openapi-sanitizer",
+      targets: ["OpenAPISanitizerExecutable"]
     ),
     .library(
       name: "OpenAPISanitizerCore",
@@ -29,6 +33,10 @@ let package = Package(
       name: "OpenAPISanitizerCLI",
       dependencies: ["OpenAPISanitizerCore"]
     ),
+    .executableTarget(
+      name: "OpenAPISanitizerExecutable",
+      dependencies: ["OpenAPISanitizerCore"]
+    ),
     .plugin(
       name: "OpenAPISanitizerPlugin",
       capability: .buildTool(),
@@ -37,7 +45,6 @@ let package = Package(
     .testTarget(
       name: "OpenAPISanitizerTests",
       dependencies: [
-        "OpenAPISanitizerCLI",
         "OpenAPISanitizerCore",
       ]
     ),

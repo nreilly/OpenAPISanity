@@ -6,10 +6,12 @@ Swift OpenAPI Generator.
 It removes `{"type":"null"}` branches from `oneOf` arrays and collapses trivial nullable
 unions such as `oneOf: [A, null]` into `A`.
 
-The package vends both:
+The package provides:
 
-- a CLI executable: `openapi-sanitizer`
+- a user-facing CLI executable: `openapi-sanitizer`
 - a build tool plugin: `OpenAPISanitizerPlugin`
+
+It also includes an internal executable target used by the plugin at build time.
 
 ## CLI Usage
 

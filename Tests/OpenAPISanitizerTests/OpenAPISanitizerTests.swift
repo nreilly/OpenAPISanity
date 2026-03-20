@@ -1,6 +1,5 @@
 import Foundation
 import Testing
-@testable import OpenAPISanitizerCLI
 @testable import OpenAPISanitizerCore
 
 struct OpenAPISanitizerTests {
@@ -178,7 +177,7 @@ struct OpenAPISanitizerTests {
       """.utf8
     ).write(to: inputURL)
 
-    try OpenAPISanitizerCLI.run(arguments: [
+    try OpenAPISanitizerCommand.run(arguments: [
       "openapi-sanitizer",
       inputURL.path(),
       outputURL.path(),
