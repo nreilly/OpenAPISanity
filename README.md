@@ -55,20 +55,21 @@ let package = Package(
 )
 ```
 
-The plugin looks for files named `openapi.json` or `*.openapi.json` in the target and
-emits matching `*-sanitized.json` files into the plugin work directory.
+The plugin looks for files named `openapi.json.nullfix` or `*.openapi.json.nullfix` in
+the target and emits matching derived `openapi.json` files into the plugin work directory
+by stripping the `.nullfix` suffix.
 
 Examples:
 
-- `openapi.json` -> `openapi-sanitized.json`
-- `petstore.openapi.json` -> `petstore.openapi-sanitized.json`
+- `openapi.json.nullfix` -> `openapi.json`
+- `petstore.openapi.json.nullfix` -> `petstore.openapi.json`
 
 The plugin supports both SwiftPM targets and Xcode targets.
 
 ## Plugin Limitation
 
 SwiftPM build tool plugins cannot rewrite source files in place. This plugin therefore
-generates a derived JSON file instead of mutating the original spec.
+generates a derived JSON file instead of mutating the `.nullfix` source spec.
 
 If you want Swift OpenAPI Generator to consume the sanitised file automatically, the next
 step is usually to wrap both operations in a single plugin or script-driven build step.

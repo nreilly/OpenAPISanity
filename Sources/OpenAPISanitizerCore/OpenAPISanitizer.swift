@@ -101,3 +101,19 @@ public enum OpenAPISanitizerCommandError: LocalizedError {
     }
   }
 }
+
+public enum OpenAPISanitizerBuildRule {
+  public static let suffix = ".openapi.json.nullfix"
+
+  public static func isSupportedInputFileName(_ fileName: String) -> Bool {
+    fileName.hasSuffix(suffix) || fileName == "openapi.json.nullfix"
+  }
+
+  public static func outputFileName(for inputFileName: String) -> String {
+    guard isSupportedInputFileName(inputFileName) else {
+      return inputFileName
+    }
+
+    return String(inputFileName.dropLast(".nullfix".count))
+  }
+}

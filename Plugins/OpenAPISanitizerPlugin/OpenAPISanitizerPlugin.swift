@@ -61,12 +61,8 @@ private func discoverInputFiles(in directory: URL) -> [URL] {
 }
 
 private func isSupportedInputFile(_ fileURL: URL) -> Bool {
-  guard fileURL.pathExtension == "json" else {
-    return false
-  }
-
   let fileName = fileURL.lastPathComponent
-  return fileName == "openapi.json" || fileName.hasSuffix(".openapi.json")
+  return fileName == "openapi.json.nullfix" || fileName.hasSuffix(".openapi.json.nullfix")
 }
 
 private func buildCommand(
@@ -74,12 +70,11 @@ private func buildCommand(
   in outputDirectory: URL,
   executable: URL
 ) -> Command {
-  let outputFile = outputDirectory.appendingPathComponent(
-    sanitisedOutputFileName(for: inputFile)
-  )
+  let outputName = generatedOpenAPIFileName(for: inputFile)
+  let outputFile = outputDirectory.appendingPathComponent(outputName)
 
   return .buildCommand(
-    displayName: "Sanitising \(inputFile.lastPathComponent)",
+    displayName: "Generating \(outputName) from \(inputFile.lastPathComponent)",
     executable: executable,
     arguments: [inputFile.path(), outputFile.path()],
     inputFiles: [inputFile],
@@ -87,6 +82,6 @@ private func buildCommand(
   )
 }
 
-private func sanitisedOutputFileName(for inputFile: URL) -> String {
-  inputFile.deletingPathExtension().lastPathComponent + "-sanitized.json"
+private func generatedOpenAPIFileName(for inputFile: URL) -> String {
+  String(inputFile.lastPathComponent.dropLast(".nullfix".count))
 }

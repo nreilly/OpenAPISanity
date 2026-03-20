@@ -191,6 +191,26 @@ struct OpenAPISanitizerTests {
     #expect(outputObject["$ref"] as? String == "#/components/schemas/Cat")
     #expect(outputObject["oneOf"] == nil)
   }
+
+  @Test
+  func recognisesNullfixOpenAPIInputs() {
+    #expect(OpenAPISanitizerBuildRule.isSupportedInputFileName("openapi.json.nullfix"))
+    #expect(OpenAPISanitizerBuildRule.isSupportedInputFileName("pet.openapi.json.nullfix"))
+    #expect(!OpenAPISanitizerBuildRule.isSupportedInputFileName("openapi.json"))
+    #expect(!OpenAPISanitizerBuildRule.isSupportedInputFileName("pet.openapi.json"))
+    #expect(!OpenAPISanitizerBuildRule.isSupportedInputFileName("schema.json.nullfix"))
+  }
+
+  @Test
+  func stripsNullfixSuffixForGeneratedOpenAPIName() {
+    #expect(
+      OpenAPISanitizerBuildRule.outputFileName(for: "openapi.json.nullfix") == "openapi.json"
+    )
+    #expect(
+      OpenAPISanitizerBuildRule.outputFileName(for: "pet.openapi.json.nullfix")
+        == "pet.openapi.json"
+    )
+  }
 }
 
 private func jsonObject(_ json: String) -> Any {
