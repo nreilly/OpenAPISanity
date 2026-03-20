@@ -7,7 +7,7 @@ struct OpenAPISanitizerPlugin: BuildToolPlugin {
     context: PluginContext,
     target: Target
   ) async throws -> [Command] {
-    let tool = try context.tool(named: "openapi-sanitizer")
+    let tool = try context.tool(named: "OpenAPISanitizerCLI")
     let inputFiles = discoverInputFiles(in: target.directoryURL)
 
     return inputFiles.map {
@@ -28,7 +28,7 @@ extension OpenAPISanitizerPlugin: XcodeBuildToolPlugin {
     context: XcodePluginContext,
     target: XcodeTarget
   ) throws -> [Command] {
-    let tool = try context.tool(named: "openapi-sanitizer")
+    let tool = try context.tool(named: "OpenAPISanitizerCLI")
     let inputFiles = target.inputFiles.map(\.url).filter(isSupportedInputFile)
 
     return inputFiles.map {
