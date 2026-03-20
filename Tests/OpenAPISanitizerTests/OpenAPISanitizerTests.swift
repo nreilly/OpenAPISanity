@@ -193,26 +193,6 @@ struct OpenAPISanitizerTests {
   }
 
   @Test
-  func recognisesNullfixOpenAPIInputs() {
-    #expect(OpenAPISanitizerBuildRule.isSupportedInputFileName("openapi.json.nullfix"))
-    #expect(OpenAPISanitizerBuildRule.isSupportedInputFileName("pet.openapi.json.nullfix"))
-    #expect(!OpenAPISanitizerBuildRule.isSupportedInputFileName("openapi.json"))
-    #expect(!OpenAPISanitizerBuildRule.isSupportedInputFileName("pet.openapi.json"))
-    #expect(!OpenAPISanitizerBuildRule.isSupportedInputFileName("schema.json.nullfix"))
-  }
-
-  @Test
-  func stripsNullfixSuffixForGeneratedOpenAPIName() {
-    #expect(
-      OpenAPISanitizerBuildRule.outputFileName(for: "openapi.json.nullfix") == "openapi.json"
-    )
-    #expect(
-      OpenAPISanitizerBuildRule.outputFileName(for: "pet.openapi.json.nullfix")
-        == "pet.openapi.json"
-    )
-  }
-
-  @Test
   func removesAdjustedPropertiesFromRequired() throws {
     let input = try #require(jsonObject(
       """

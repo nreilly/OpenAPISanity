@@ -9,11 +9,9 @@ unions such as `oneOf: [A, null]` into `A`.
 The package provides:
 
 - a user-facing CLI executable: `openapi-sanitizer`
-- a build tool plugin: `OpenAPISanitizerPlugin`
 
 The recommended integration with Swift OpenAPI Generator is the CLI or the included
-pre-build script. The build tool plugin is available, but it does not compose directly
-with Swift OpenAPI Generator's own build tool plugin on the same target.
+pre-build script.
 
 ## CLI Usage
 
@@ -31,51 +29,6 @@ swift run swift-openapi-generator generate \
   --config openapi-generator-config.yaml \
   --output-directory Generated/
 ```
-
-## Build Tool Plugin Usage
-
-Add the package as a dependency, then attach `OpenAPISanitizerPlugin` to the target that
-contains your OpenAPI document:
-
-```swift
-// swift-tools-version: 6.1
-import PackageDescription
-
-let package = Package(
-  name: "Example",
-  dependencies: [
-    .package(path: "../OpenAPISanity"),
-  ],
-  targets: [
-    .target(
-      name: "APISpec",
-      plugins: [
-        .plugin(name: "OpenAPISanitizerPlugin", package: "OpenAPISanity"),
-      ]
-    ),
-  ]
-)
-```
-
-The plugin looks for files named `openapi.json.nullfix` or `*.openapi.json.nullfix` in
-the target and emits matching derived `openapi.json` files into the plugin work directory
-by stripping the `.nullfix` suffix.
-
-Examples:
-
-- `openapi.json.nullfix` -> `openapi.json`
-- `petstore.openapi.json.nullfix` -> `petstore.openapi.json`
-
-The plugin supports both SwiftPM targets and Xcode targets.
-
-## Plugin Limitation
-
-SwiftPM build tool plugins cannot rewrite source files in place. This plugin therefore
-generates a derived JSON file instead of mutating the `.nullfix` source spec.
-
-It also cannot be chained transparently into Swift OpenAPI Generator's build tool plugin,
-because the generator validates `openapi.json` as a declared target input before build
-commands run.
 
 ## Xcode Pre-Build Script
 

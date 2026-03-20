@@ -16,27 +16,14 @@ let package = Package(
       name: "OpenAPISanitizerCore",
       targets: ["OpenAPISanitizerCore"]
     ),
-    .plugin(
-      name: "OpenAPISanitizerPlugin",
-      targets: ["OpenAPISanitizerPlugin"]
-    ),
   ],
   targets: [
     .target(
       name: "OpenAPISanitizerCore"
     ),
     .executableTarget(
-      name: "OpenAPISanitizerCLI",
-      dependencies: ["OpenAPISanitizerCore"]
-    ),
-    .executableTarget(
       name: "OpenAPISanitizerExecutable",
       dependencies: ["OpenAPISanitizerCore"]
-    ),
-    .plugin(
-      name: "OpenAPISanitizerPlugin",
-      capability: .buildTool(),
-      dependencies: ["OpenAPISanitizerCLI"]
     ),
     .testTarget(
       name: "OpenAPISanitizerTests",
