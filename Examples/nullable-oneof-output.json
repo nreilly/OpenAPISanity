@@ -1,0 +1,4 @@
+{
+  "$ref": "#/components/schemas/Cat",
+  "description": "nullable pet"
+}

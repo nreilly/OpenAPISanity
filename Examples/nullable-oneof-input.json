@@ -1,0 +1,11 @@
+{
+  "description": "nullable pet",
+  "oneOf": [
+    {
+      "$ref": "#/components/schemas/Cat"
+    },
+    {
+      "type": "null"
+    }
+  ]
+}
