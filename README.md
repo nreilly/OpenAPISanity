@@ -1,12 +1,17 @@
 # OpenAPI Sanitizer
 
-`openapi-sanitizer` is a Swift command-line tool that rewrites OpenAPI JSON documents
-before they are passed to Swift OpenAPI Generator.
+`openapi-sanitizer` rewrites OpenAPI JSON documents before they are passed to
+Swift OpenAPI Generator.
 
 It removes `{"type":"null"}` branches from `oneOf` arrays and collapses trivial nullable
 unions such as `oneOf: [A, null]` into `A`.
 
-## Usage
+The package vends both:
+
+- a CLI executable: `openapi-sanitizer`
+- a build tool plugin: `OpenAPISanitizerPlugin`
+
+## CLI Usage
 
 Build or run it with SwiftPM:
 
@@ -22,6 +27,50 @@ swift run swift-openapi-generator generate \
   --config openapi-generator-config.yaml \
   --output-directory Generated/
 ```
+
+## Build Tool Plugin Usage
+
+Add the package as a dependency, then attach `OpenAPISanitizerPlugin` to the target that
+contains your OpenAPI document:
+
+```swift
+// swift-tools-version: 6.1
+import PackageDescription
+
+let package = Package(
+  name: "Example",
+  dependencies: [
+    .package(path: "../OpenAPISanity"),
+  ],
+  targets: [
+    .target(
+      name: "APISpec",
+      plugins: [
+        .plugin(name: "OpenAPISanitizerPlugin", package: "OpenAPISanity"),
+      ]
+    ),
+  ]
+)
+```
+
+The plugin looks for files named `openapi.json` or `*.openapi.json` in the target and
+emits matching `*-sanitized.json` files into the plugin work directory.
+
+Examples:
+
+- `openapi.json` -> `openapi-sanitized.json`
+- `petstore.openapi.json` -> `petstore.openapi-sanitized.json`
+
+The plugin supports both SwiftPM targets and Xcode targets.
+
+## Plugin Limitation
+
+SwiftPM build tool plugins cannot rewrite source files in place. This plugin therefore
+generates a derived JSON file instead of mutating the original spec.
+
+If you want Swift OpenAPI Generator to consume the sanitised file automatically, the next
+step is usually to wrap both operations in a single plugin or script-driven build step.
+This package currently provides the sanitiser as a separate build tool plugin.
 
 ## Transformation Rules
 

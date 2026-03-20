@@ -1,4 +1,4 @@
-// swift-tools-version: 6.0
+// swift-tools-version: 6.1
 
 import PackageDescription
 
@@ -16,6 +16,10 @@ let package = Package(
       name: "OpenAPISanitizerCore",
       targets: ["OpenAPISanitizerCore"]
     ),
+    .plugin(
+      name: "OpenAPISanitizerPlugin",
+      targets: ["OpenAPISanitizerPlugin"]
+    ),
   ],
   targets: [
     .target(
@@ -24,6 +28,11 @@ let package = Package(
     .executableTarget(
       name: "OpenAPISanitizerCLI",
       dependencies: ["OpenAPISanitizerCore"]
+    ),
+    .plugin(
+      name: "OpenAPISanitizerPlugin",
+      capability: .buildTool(),
+      dependencies: ["OpenAPISanitizerCLI"]
     ),
     .testTarget(
       name: "OpenAPISanitizerTests",
