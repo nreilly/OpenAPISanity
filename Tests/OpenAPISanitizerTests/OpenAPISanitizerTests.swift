@@ -211,6 +211,61 @@ struct OpenAPISanitizerTests {
         == "pet.openapi.json"
     )
   }
+
+  @Test
+  func removesAdjustedPropertiesFromRequired() throws {
+    let input = try #require(jsonObject(
+      """
+      {
+        "type": "object",
+        "properties": {
+          "pet": {
+            "oneOf": [
+              { "$ref": "#/components/schemas/Cat" },
+              { "type": "null" }
+            ]
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": ["pet", "name"]
+      }
+      """
+    ) as? [String: Any])
+
+    let output = OpenAPISanitizer().rewriteObject(input)
+    let required = try #require(output["required"] as? [String])
+    let pet = try #require((output["properties"] as? [String: Any])?["pet"] as? [String: Any])
+
+    #expect(required == ["name"])
+    #expect(pet["$ref"] as? String == "#/components/schemas/Cat")
+  }
+
+  @Test
+  func keepsRequiredEntriesForUnchangedProperties() throws {
+    let input = try #require(jsonObject(
+      """
+      {
+        "type": "object",
+        "properties": {
+          "pet": {
+            "oneOf": [
+              { "$ref": "#/components/schemas/Cat" },
+              { "$ref": "#/components/schemas/Dog" }
+            ]
+          }
+        },
+        "required": ["pet"]
+      }
+      """
+    ) as? [String: Any])
+
+    let output = OpenAPISanitizer().rewriteObject(input)
+    let required = try #require(output["required"] as? [String])
+
+    #expect(required == ["pet"])
+  }
 }
 
 private func jsonObject(_ json: String) -> Any {

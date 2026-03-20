@@ -9,10 +9,6 @@ let package = Package(
   ],
   products: [
     .executable(
-      name: "OpenAPISanitizerCLI",
-      targets: ["OpenAPISanitizerCLI"]
-    ),
-    .executable(
       name: "openapi-sanitizer",
       targets: ["OpenAPISanitizerExecutable"]
     ),

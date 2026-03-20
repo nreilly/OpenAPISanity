@@ -4,42 +4,15 @@ public struct OpenAPISanitizer {
   public init() {}
 
   public func rewriteNode(_ node: Any) -> Any {
-    switch node {
-    case let object as [String: Any]:
-      rewriteObject(object)
-    case let array as [Any]:
-      array.map(rewriteNode)
-    default:
-      node
-    }
+    rewrite(node).node
   }
 
   public func rewriteObject(_ object: [String: Any]) -> [String: Any] {
-    var rewrittenObject = object.mapValues(rewriteNode)
-
-    guard let oneOf = rewrittenObject["oneOf"] as? [Any] else {
-      return rewrittenObject
+    guard let rewritten = rewrite(object).node as? [String: Any] else {
+      return object
     }
 
-    let nonNullBranches = oneOf.filter { !isNullSchema($0) }
-
-    guard nonNullBranches.count != oneOf.count else {
-      return rewrittenObject
-    }
-
-    switch nonNullBranches.count {
-    case 0:
-      return rewrittenObject
-    case 1:
-      rewrittenObject.removeValue(forKey: "oneOf")
-      return mergeCollapsedBranch(
-        branch: nonNullBranches[0],
-        into: rewrittenObject
-      )
-    default:
-      rewrittenObject["oneOf"] = nonNullBranches
-      return rewrittenObject
-    }
+    return rewritten
   }
 
   public func isNullSchema(_ node: Any) -> Bool {
@@ -59,6 +32,66 @@ public struct OpenAPISanitizer {
     )
   }
 
+  private func rewrite(_ node: Any) -> RewriteResult {
+    switch node {
+    case let object as [String: Any]:
+      return rewriteObjectNode(object)
+    case let array as [Any]:
+      let rewrittenArray = array.map { rewrite($0).node }
+      return RewriteResult(node: rewrittenArray, adjustedNullableSchema: false)
+    default:
+      return RewriteResult(node: node, adjustedNullableSchema: false)
+    }
+  }
+
+  private func rewriteObjectNode(_ object: [String: Any]) -> RewriteResult {
+    var rewrittenObject: [String: Any] = [:]
+    var adjustedPropertyNames = Set<String>()
+
+    for (key, value) in object {
+      if key == "properties", let properties = value as? [String: Any] {
+        let rewrittenProperties = rewriteProperties(properties)
+        rewrittenObject[key] = rewrittenProperties.properties
+        adjustedPropertyNames = rewrittenProperties.adjustedPropertyNames
+        continue
+      }
+
+      rewrittenObject[key] = rewrite(value).node
+    }
+
+    if !adjustedPropertyNames.isEmpty,
+      let required = rewrittenObject["required"] as? [String]
+    {
+      let filtered = required.filter { !adjustedPropertyNames.contains($0) }
+      rewrittenObject["required"] = filtered
+    }
+
+    guard let oneOf = rewrittenObject["oneOf"] as? [Any] else {
+      return RewriteResult(node: rewrittenObject, adjustedNullableSchema: false)
+    }
+
+    let nonNullBranches = oneOf.filter { !isNullSchema($0) }
+
+    guard nonNullBranches.count != oneOf.count else {
+      return RewriteResult(node: rewrittenObject, adjustedNullableSchema: false)
+    }
+
+    switch nonNullBranches.count {
+    case 0:
+      return RewriteResult(node: rewrittenObject, adjustedNullableSchema: false)
+    case 1:
+      rewrittenObject.removeValue(forKey: "oneOf")
+      let merged = mergeCollapsedBranch(
+        branch: nonNullBranches[0],
+        into: rewrittenObject
+      )
+      return RewriteResult(node: merged, adjustedNullableSchema: true)
+    default:
+      rewrittenObject["oneOf"] = nonNullBranches
+      return RewriteResult(node: rewrittenObject, adjustedNullableSchema: true)
+    }
+  }
+
   private func mergeCollapsedBranch(
     branch: Any,
     into object: [String: Any]
@@ -75,6 +108,35 @@ public struct OpenAPISanitizer {
 
     return merged
   }
+
+  private func rewriteProperties(_ properties: [String: Any]) -> RewrittenProperties {
+    var rewrittenProperties: [String: Any] = [:]
+    var adjustedPropertyNames = Set<String>()
+
+    for (propertyName, propertyValue) in properties {
+      let rewrittenProperty = rewrite(propertyValue)
+      rewrittenProperties[propertyName] = rewrittenProperty.node
+
+      if rewrittenProperty.adjustedNullableSchema {
+        adjustedPropertyNames.insert(propertyName)
+      }
+    }
+
+    return RewrittenProperties(
+      properties: rewrittenProperties,
+      adjustedPropertyNames: adjustedPropertyNames
+    )
+  }
+}
+
+private struct RewriteResult {
+  let node: Any
+  let adjustedNullableSchema: Bool
+}
+
+private struct RewrittenProperties {
+  let properties: [String: Any]
+  let adjustedPropertyNames: Set<String>
 }
 
 public enum OpenAPISanitizerCommand {

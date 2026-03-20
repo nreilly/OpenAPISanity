@@ -11,7 +11,9 @@ The package provides:
 - a user-facing CLI executable: `openapi-sanitizer`
 - a build tool plugin: `OpenAPISanitizerPlugin`
 
-It also includes an internal executable target used by the plugin at build time.
+The recommended integration with Swift OpenAPI Generator is the CLI or the included
+pre-build script. The build tool plugin is available, but it does not compose directly
+with Swift OpenAPI Generator's own build tool plugin on the same target.
 
 ## CLI Usage
 
@@ -71,9 +73,9 @@ The plugin supports both SwiftPM targets and Xcode targets.
 SwiftPM build tool plugins cannot rewrite source files in place. This plugin therefore
 generates a derived JSON file instead of mutating the `.nullfix` source spec.
 
-If you want Swift OpenAPI Generator to consume the sanitised file automatically, the next
-step is usually to wrap both operations in a single plugin or script-driven build step.
-This package currently provides the sanitiser as a separate build tool plugin.
+It also cannot be chained transparently into Swift OpenAPI Generator's build tool plugin,
+because the generator validates `openapi.json` as a declared target input before build
+commands run.
 
 ## Xcode Pre-Build Script
 
@@ -83,7 +85,7 @@ presence of `openapi.json` before target build phases run.
 
 This repository includes a helper script:
 
-[`generate-openapi.sh`](/Users/nathan/Documents/code/OpenAPISanity/Scripts/generate-openapi.sh)
+[`Scripts/generate-openapi.sh`](Scripts/generate-openapi.sh)
 
 Example invocation:
 
@@ -101,10 +103,15 @@ Recommended Xcode setup:
 - add `openapi.json` to the Xcode target so `OpenAPIGenerator` can discover it
 - run the script from a scheme pre-action, or from CI before `xcodebuild`
 
+The pre-build script is the recommended Xcode integration when you are also using
+Swift OpenAPI Generator's `OpenAPIGenerator` plugin.
+
 ## Transformation Rules
 
 - `oneOf` branches matching `{ "type": "null" }` are removed.
 - If one non-null branch remains, `oneOf` is collapsed into that branch.
+- If a property schema loses a `null` branch, that property is also removed from the
+  parent object's `required` array.
 - Outer schema metadata is preserved when collapsing, including fields such as
   `description`, `title`, `default`, `example`, `deprecated`, and `x-*`.
 - If two or more non-null branches remain, `oneOf` is kept.
@@ -137,6 +144,6 @@ Output:
 }
 ```
 
-See [`Examples/nullable-oneof-input.json`](/Users/nathan/Documents/code/OpenAPISanity/Examples/nullable-oneof-input.json)
+See [`Examples/nullable-oneof-input.json`](Examples/nullable-oneof-input.json)
 and
-[`Examples/nullable-oneof-output.json`](/Users/nathan/Documents/code/OpenAPISanity/Examples/nullable-oneof-output.json).
+[`Examples/nullable-oneof-output.json`](Examples/nullable-oneof-output.json).

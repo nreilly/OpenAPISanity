@@ -28,6 +28,9 @@ fi
 
 mkdir -p "$(dirname "$OUTPUT_FILE")"
 
+unset SWIFT_DEBUG_INFORMATION_FORMAT
+unset SWIFT_DEBUG_INFORMATION_VERSION
+
 swift run \
   --package-path "$SANITIZER_PACKAGE_DIR" \
   openapi-sanitizer \
