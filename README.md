@@ -83,6 +83,8 @@ Example invocation:
 
 ```sh
 "$SRCROOT/../OpenAPISanity/Scripts/generate-openapi.sh" \
+  --prune-orphan-required \
+  --quiet \
   "$SRCROOT/Path/To/openapi.json.nullfix" \
   "$SRCROOT/Path/To/openapi.json" \
   "$SRCROOT/../OpenAPISanity"

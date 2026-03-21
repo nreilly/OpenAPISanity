@@ -2,8 +2,29 @@
 
 set -eu
 
+QUIET=false
+PRUNE_ORPHAN_REQUIRED=false
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --quiet)
+      QUIET=true
+      shift
+      ;;
+    --prune-orphan-required)
+      PRUNE_ORPHAN_REQUIRED=true
+      shift
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
 if [ "$#" -lt 2 ] || [ "$#" -gt 3 ]; then
-  echo "Usage: $0 <input.nullfix> <output.json> [sanitizer-package-dir]" >&2
+  echo \
+    "Usage: $0 [--quiet] [--prune-orphan-required] <input.nullfix> <output.json> [sanitizer-package-dir]" \
+    >&2
   exit 1
 fi
 
@@ -31,8 +52,19 @@ mkdir -p "$(dirname "$OUTPUT_FILE")"
 unset SWIFT_DEBUG_INFORMATION_FORMAT
 unset SWIFT_DEBUG_INFORMATION_VERSION
 
+SANITIZER_ARGS=""
+
+if [ "$QUIET" = true ]; then
+  SANITIZER_ARGS="$SANITIZER_ARGS --quiet"
+fi
+
+if [ "$PRUNE_ORPHAN_REQUIRED" = true ]; then
+  SANITIZER_ARGS="$SANITIZER_ARGS --prune-orphan-required"
+fi
+
 swift run \
   --package-path "$SANITIZER_PACKAGE_DIR" \
   openapi-sanitizer \
+  $SANITIZER_ARGS \
   "$INPUT_FILE" \
   "$OUTPUT_FILE"
