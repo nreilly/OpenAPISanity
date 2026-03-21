@@ -330,6 +330,114 @@ struct OpenAPISanitizerTests {
 
     #expect(required == ["pet"])
   }
+
+  @Test
+  func removesOrphanRequiredEntriesWhenEnabled() throws {
+    let input = try #require(jsonObject(
+      """
+      {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": ["name", "ghost"]
+      }
+      """
+    ) as? [String: Any])
+
+    let output = OpenAPISanitizer().rewriteObject(
+      input,
+      options: OpenAPISanitizerOptions(pruneOrphanRequiredProperties: true)
+    )
+    let required = try #require(output["required"] as? [String])
+
+    #expect(required == ["name"])
+  }
+
+  @Test
+  func keepsOrphanRequiredEntriesByDefault() throws {
+    let input = try #require(jsonObject(
+      """
+      {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": ["name", "ghost"]
+      }
+      """
+    ) as? [String: Any])
+
+    let output = OpenAPISanitizer().rewriteObject(input)
+    let required = try #require(output["required"] as? [String])
+
+    #expect(required == ["name", "ghost"])
+  }
+
+  @Test
+  func cliLogsModificationsByDefault() throws {
+    let directory = try temporaryDirectory()
+    let inputURL = directory.appending(path: "input.json")
+    var logs: [String] = []
+
+    try Data(
+      """
+      {
+        "anyOf": [
+          { "$ref": "#/components/schemas/Cat" },
+          { "type": "null" }
+        ]
+      }
+      """.utf8
+    ).write(to: inputURL)
+
+    try OpenAPISanitizerCommand.run(
+      arguments: ["openapi-sanitizer", "--in-place", inputURL.path()],
+      log: { logs.append($0) }
+    )
+
+    #expect(!logs.isEmpty)
+    #expect(logs.contains { $0.contains("Removed null branch") })
+    #expect(logs.contains { $0.contains("Collapsed") })
+  }
+
+  @Test
+  func cliQuietModeSuppressesLogs() throws {
+    let directory = try temporaryDirectory()
+    let inputURL = directory.appending(path: "input.json")
+    var logs: [String] = []
+
+    try Data(
+      """
+      {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": ["name", "ghost"]
+      }
+      """.utf8
+    ).write(to: inputURL)
+
+    try OpenAPISanitizerCommand.run(
+      arguments: [
+        "openapi-sanitizer",
+        "--quiet",
+        "--prune-orphan-required",
+        "--in-place",
+        inputURL.path(),
+      ],
+      log: { logs.append($0) }
+    )
+
+    #expect(logs.isEmpty)
+  }
 }
 
 private func jsonObject(_ json: String) -> Any {

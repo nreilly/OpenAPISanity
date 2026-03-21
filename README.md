@@ -28,6 +28,20 @@ Or rewrite a file in place:
 swift run openapi-sanitizer --in-place openapi.json
 ```
 
+Enable optional pruning for `required` entries that do not exist in the sibling
+`properties` map:
+
+```sh
+swift run openapi-sanitizer --prune-orphan-required --in-place openapi.json
+```
+
+By default, each modification is written to standard output so it appears in build
+logs. Suppress that output with `--quiet`:
+
+```sh
+swift run openapi-sanitizer --quiet --in-place openapi.json
+```
+
 Then feed the sanitised document into Swift OpenAPI Generator:
 
 ```sh
@@ -50,6 +64,8 @@ shapes as the executable:
 
 ```sh
 swift package --allow-writing-to-package-directory sanitize-openapi --in-place path/to/openapi.json
+swift package --allow-writing-to-package-directory sanitize-openapi --quiet path/to/openapi.json
+swift package --allow-writing-to-package-directory sanitize-openapi --prune-orphan-required path/to/openapi.json
 swift package --allow-writing-to-package-directory sanitize-openapi input.json output.json
 ```
 
@@ -88,10 +104,13 @@ Swift OpenAPI Generator's `OpenAPIGenerator` plugin.
 - If one non-null branch remains, `oneOf` or `anyOf` is collapsed into that branch.
 - If a property schema loses a `null` branch, that property is also removed from the
   parent object's `required` array.
+- Optionally, entries in `required` that are not present in the sibling `properties`
+  map can also be removed with `--prune-orphan-required`.
 - Outer schema metadata is preserved when collapsing, including fields such as
   `description`, `title`, `default`, `example`, `deprecated`, and `x-*`.
 - If two or more non-null branches remain, the union keyword is kept.
 - If all branches are null, the schema is left unchanged.
+- Each applied rewrite is logged unless `--quiet` is used.
 
 The traversal is recursive and applies across the full JSON document, including nested
 schemas in `components`, `paths`, `properties`, `items`, composition keywords, and any

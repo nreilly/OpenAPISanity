@@ -14,23 +14,25 @@ private func resolveArguments(
   _ arguments: [String],
   packageDirectory: URL
 ) throws -> [String] {
-  if arguments.count == 1, let inputPath = arguments.first, !inputPath.hasPrefix("-") {
-    let resolvedInput = resolvePath(inputPath, relativeTo: packageDirectory)
-    return ["--in-place", resolvedInput.path()]
+  let positionalArguments = arguments.filter { !$0.hasPrefix("-") }
+
+  guard !positionalArguments.isEmpty, positionalArguments.count <= 2 else {
+    throw OpenAPISanitizerCommandPluginError.invalidArguments
   }
 
-  if arguments.count == 2, arguments.first == "--in-place", let inputPath = arguments.last {
-    let resolvedInput = resolvePath(inputPath, relativeTo: packageDirectory)
-    return ["--in-place", resolvedInput.path()]
+  var resolvedArguments = arguments.map { argument in
+    if argument.hasPrefix("-") {
+      return argument
+    }
+
+    return resolvePath(argument, relativeTo: packageDirectory).path()
   }
 
-  if arguments.count == 2 {
-    let inputURL = resolvePath(arguments[0], relativeTo: packageDirectory)
-    let outputURL = resolvePath(arguments[1], relativeTo: packageDirectory)
-    return [inputURL.path(), outputURL.path()]
+  if positionalArguments.count == 1 && !resolvedArguments.contains("--in-place") {
+    resolvedArguments.insert("--in-place", at: 0)
   }
 
-  throw OpenAPISanitizerCommandPluginError.invalidArguments
+  return resolvedArguments
 }
 
 private func resolvePath(_ path: String, relativeTo packageDirectory: URL) -> URL {
@@ -69,9 +71,9 @@ enum OpenAPISanitizerCommandPluginError: LocalizedError {
     case .invalidArguments:
       """
       Usage:
-        swift package --allow-writing-to-package-directory sanitize-openapi --in-place path/to/openapi.json
-        swift package --allow-writing-to-package-directory sanitize-openapi path/to/openapi.json
-        swift package --allow-writing-to-package-directory sanitize-openapi input.json output.json
+        swift package --allow-writing-to-package-directory sanitize-openapi [--quiet] [--prune-orphan-required] --in-place path/to/openapi.json
+        swift package --allow-writing-to-package-directory sanitize-openapi [--quiet] [--prune-orphan-required] path/to/openapi.json
+        swift package --allow-writing-to-package-directory sanitize-openapi [--quiet] [--prune-orphan-required] input.json output.json
       """
     case .toolFailed(let status):
       "openapi-sanitizer failed with exit status \(status)."
