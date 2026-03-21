@@ -66,30 +66,13 @@ public struct OpenAPISanitizer {
       rewrittenObject["required"] = filtered
     }
 
-    guard let oneOf = rewrittenObject["oneOf"] as? [Any] else {
-      return RewriteResult(node: rewrittenObject, adjustedNullableSchema: false)
+    for keyword in ["oneOf", "anyOf"] {
+      if let rewritten = rewriteUnion(in: rewrittenObject, keyword: keyword) {
+        return rewritten
+      }
     }
 
-    let nonNullBranches = oneOf.filter { !isNullSchema($0) }
-
-    guard nonNullBranches.count != oneOf.count else {
-      return RewriteResult(node: rewrittenObject, adjustedNullableSchema: false)
-    }
-
-    switch nonNullBranches.count {
-    case 0:
-      return RewriteResult(node: rewrittenObject, adjustedNullableSchema: false)
-    case 1:
-      rewrittenObject.removeValue(forKey: "oneOf")
-      let merged = mergeCollapsedBranch(
-        branch: nonNullBranches[0],
-        into: rewrittenObject
-      )
-      return RewriteResult(node: merged, adjustedNullableSchema: true)
-    default:
-      rewrittenObject["oneOf"] = nonNullBranches
-      return RewriteResult(node: rewrittenObject, adjustedNullableSchema: true)
-    }
+    return RewriteResult(node: rewrittenObject, adjustedNullableSchema: false)
   }
 
   private func mergeCollapsedBranch(
@@ -127,6 +110,38 @@ public struct OpenAPISanitizer {
       adjustedPropertyNames: adjustedPropertyNames
     )
   }
+
+  private func rewriteUnion(
+    in object: [String: Any],
+    keyword: String
+  ) -> RewriteResult? {
+    guard let branches = object[keyword] as? [Any] else {
+      return nil
+    }
+
+    let nonNullBranches = branches.filter { !isNullSchema($0) }
+
+    guard nonNullBranches.count != branches.count else {
+      return RewriteResult(node: object, adjustedNullableSchema: false)
+    }
+
+    switch nonNullBranches.count {
+    case 0:
+      return RewriteResult(node: object, adjustedNullableSchema: false)
+    case 1:
+      var rewrittenObject = object
+      rewrittenObject.removeValue(forKey: keyword)
+      let merged = mergeCollapsedBranch(
+        branch: nonNullBranches[0],
+        into: rewrittenObject
+      )
+      return RewriteResult(node: merged, adjustedNullableSchema: true)
+    default:
+      var rewrittenObject = object
+      rewrittenObject[keyword] = nonNullBranches
+      return RewriteResult(node: rewrittenObject, adjustedNullableSchema: true)
+    }
+  }
 }
 
 private struct RewriteResult {
@@ -141,15 +156,51 @@ private struct RewrittenProperties {
 
 public enum OpenAPISanitizerCommand {
   public static func run(arguments: [String]) throws {
-    guard arguments.count == 3 else {
-      throw OpenAPISanitizerCommandError.invalidArguments
-    }
-
-    let inputURL = URL(fileURLWithPath: arguments[1])
-    let outputURL = URL(fileURLWithPath: arguments[2])
+    let configuration = try Configuration(arguments: arguments)
+    let inputURL = configuration.inputURL
+    let outputURL = configuration.outputURL
     let data = try Data(contentsOf: inputURL)
     let rewritten = try OpenAPISanitizer().rewrite(data: data)
-    try rewritten.write(to: outputURL)
+    try write(rewritten, to: outputURL)
+  }
+
+  private static func write(_ data: Data, to outputURL: URL) throws {
+    let temporaryURL = outputURL
+      .deletingLastPathComponent()
+      .appendingPathComponent(".\(UUID().uuidString).tmp")
+
+    try data.write(to: temporaryURL, options: .atomic)
+
+    if FileManager.default.fileExists(atPath: outputURL.path()) {
+      _ = try FileManager.default.replaceItemAt(outputURL, withItemAt: temporaryURL)
+    } else {
+      try FileManager.default.moveItem(at: temporaryURL, to: outputURL)
+    }
+  }
+}
+
+extension OpenAPISanitizerCommand {
+  struct Configuration {
+    let inputURL: URL
+    let outputURL: URL
+
+    init(arguments: [String]) throws {
+      let commandArguments = Array(arguments.dropFirst())
+
+      if commandArguments.count == 2 && commandArguments[0] == "--in-place" {
+        inputURL = URL(fileURLWithPath: commandArguments[1])
+        outputURL = inputURL
+        return
+      }
+
+      if commandArguments.count == 2 {
+        inputURL = URL(fileURLWithPath: commandArguments[0])
+        outputURL = URL(fileURLWithPath: commandArguments[1])
+        return
+      }
+
+      throw OpenAPISanitizerCommandError.invalidArguments
+    }
   }
 }
 
@@ -159,7 +210,7 @@ public enum OpenAPISanitizerCommandError: LocalizedError {
   public var errorDescription: String? {
     switch self {
     case .invalidArguments:
-      "Usage: openapi-sanitizer input.json output.json"
+      "Usage: openapi-sanitizer [--in-place input.json] | [input.json output.json]"
     }
   }
 }

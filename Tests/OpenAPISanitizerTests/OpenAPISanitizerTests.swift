@@ -48,6 +48,29 @@ struct OpenAPISanitizerTests {
   }
 
   @Test
+  func removesNullFromMultiBranchAnyOf() throws {
+    let input = try #require(jsonObject(
+      """
+      {
+        "anyOf": [
+          { "$ref": "#/components/schemas/Cat" },
+          { "$ref": "#/components/schemas/Dog" },
+          { "type": "null" }
+        ]
+      }
+      """
+    ) as? [String: Any])
+
+    let output = OpenAPISanitizer().rewriteObject(input)
+    let anyOf = try #require(output["anyOf"] as? [[String: Any]])
+
+    #expect(anyOf.count == 2)
+    #expect(anyOf.contains { $0["$ref"] as? String == "#/components/schemas/Cat" })
+    #expect(anyOf.contains { $0["$ref"] as? String == "#/components/schemas/Dog" })
+    #expect(anyOf.allSatisfy { !$0.keys.contains("type") || $0["type"] as? String != "null" })
+  }
+
+  @Test
   func rewritesDeeplyNestedSchemas() throws {
     let input = jsonObject(
       """
@@ -193,6 +216,37 @@ struct OpenAPISanitizerTests {
   }
 
   @Test
+  func cliSupportsInPlaceRewrite() throws {
+    let directory = try temporaryDirectory()
+    let inputURL = directory.appending(path: "input.json")
+
+    try Data(
+      """
+      {
+        "anyOf": [
+          { "$ref": "#/components/schemas/Cat" },
+          { "type": "null" }
+        ]
+      }
+      """.utf8
+    ).write(to: inputURL)
+
+    try OpenAPISanitizerCommand.run(arguments: [
+      "openapi-sanitizer",
+      "--in-place",
+      inputURL.path(),
+    ])
+
+    let outputObject = try #require(
+      jsonObject(String(decoding: try Data(contentsOf: inputURL), as: UTF8.self))
+      as? [String: Any]
+    )
+
+    #expect(outputObject["$ref"] as? String == "#/components/schemas/Cat")
+    #expect(outputObject["anyOf"] == nil)
+  }
+
+  @Test
   func removesAdjustedPropertiesFromRequired() throws {
     let input = try #require(jsonObject(
       """
@@ -201,6 +255,36 @@ struct OpenAPISanitizerTests {
         "properties": {
           "pet": {
             "oneOf": [
+              { "$ref": "#/components/schemas/Cat" },
+              { "type": "null" }
+            ]
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": ["pet", "name"]
+      }
+      """
+    ) as? [String: Any])
+
+    let output = OpenAPISanitizer().rewriteObject(input)
+    let required = try #require(output["required"] as? [String])
+    let pet = try #require((output["properties"] as? [String: Any])?["pet"] as? [String: Any])
+
+    #expect(required == ["name"])
+    #expect(pet["$ref"] as? String == "#/components/schemas/Cat")
+  }
+
+  @Test
+  func removesAdjustedAnyOfPropertiesFromRequired() throws {
+    let input = try #require(jsonObject(
+      """
+      {
+        "type": "object",
+        "properties": {
+          "pet": {
+            "anyOf": [
               { "$ref": "#/components/schemas/Cat" },
               { "type": "null" }
             ]
