@@ -438,6 +438,44 @@ struct OpenAPISanitizerTests {
 
     #expect(logs.isEmpty)
   }
+
+  @Test
+  func libraryCanRewriteJSONInMemory() throws {
+    let input = Data(
+      """
+      {
+        "type": "object",
+        "properties": {
+          "pet": {
+            "oneOf": [
+              { "$ref": "#/components/schemas/Cat" },
+              { "type": "null" }
+            ]
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": ["pet", "name", "ghost"]
+      }
+      """.utf8
+    )
+
+    let report = try OpenAPISanitizer().rewriteWithReport(
+      data: input,
+      options: OpenAPISanitizerOptions(pruneOrphanRequiredProperties: true)
+    )
+    let output = try #require(
+      jsonObject(String(decoding: report.data, as: UTF8.self)) as? [String: Any]
+    )
+    let required = try #require(output["required"] as? [String])
+    let pet = try #require((output["properties"] as? [String: Any])?["pet"] as? [String: Any])
+
+    #expect(required == ["name"])
+    #expect(pet["$ref"] as? String == "#/components/schemas/Cat")
+    #expect(report.modifications.contains { $0.contains("Removed null branch") })
+    #expect(report.modifications.contains { $0.contains("Removed orphan required entry") })
+  }
 }
 
 private func jsonObject(_ json: String) -> Any {

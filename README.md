@@ -6,13 +6,41 @@ Swift OpenAPI Generator.
 It removes `{"type":"null"}` branches from `oneOf` arrays and collapses trivial nullable
 unions such as `oneOf: [A, null]` into `A`. The same rewrite is applied to `anyOf`.
 
+The library target supports iOS, macOS, and visionOS. The CLI and SwiftPM plugin are
+host-side developer tools.
+
 The package provides:
 
 - a user-facing CLI executable: `openapi-sanitizer`
+- a reusable library product: `OpenAPISanitizerCore`
 - a SwiftPM command plugin: `OpenAPISanitizerCommandPlugin`
 
 The recommended integration with Swift OpenAPI Generator is the CLI or the included
 pre-build script.
+
+## Library Usage
+
+`OpenAPISanitizerCore` can be embedded directly in iOS, macOS, and visionOS apps.
+The library works entirely in memory, so JSON does not need to be written to disk
+before it is sanitised.
+
+```swift
+import Foundation
+import OpenAPISanitizerCore
+
+let inputData = Data(openAPIJSONString.utf8)
+let sanitizer = OpenAPISanitizer()
+let report = try sanitizer.rewriteWithReport(
+  data: inputData,
+  options: OpenAPISanitizerOptions(pruneOrphanRequiredProperties: true)
+)
+
+let sanitisedData = report.data
+let modifications = report.modifications
+```
+
+The CLI and command plugin remain host-side developer tools. The library target is the
+piece intended for runtime use on Apple platforms.
 
 ## CLI Usage
 

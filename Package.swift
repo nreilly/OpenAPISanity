@@ -6,6 +6,8 @@ let package = Package(
   name: "OpenAPISanity",
   platforms: [
     .macOS(.v13),
+    .iOS(.v18),
+    .visionOS(.v2),
   ],
   products: [
     .executable(
