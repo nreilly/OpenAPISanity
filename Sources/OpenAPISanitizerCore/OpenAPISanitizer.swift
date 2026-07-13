@@ -1,23 +1,5 @@
 import Foundation
 
-public struct OpenAPISanitizerOptions: Sendable {
-  public let pruneOrphanRequiredProperties: Bool
-
-  public init(pruneOrphanRequiredProperties: Bool = false) {
-    self.pruneOrphanRequiredProperties = pruneOrphanRequiredProperties
-  }
-}
-
-public struct OpenAPISanitizerReport: Sendable {
-  public let data: Data
-  public let modifications: [String]
-
-  init(data: Data, modifications: [String]) {
-    self.data = data
-    self.modifications = modifications
-  }
-}
-
 public struct OpenAPISanitizer {
   public init() {}
 
@@ -177,7 +159,9 @@ public struct OpenAPISanitizer {
     var rewrittenRequired: [String] = []
 
     for propertyName in required {
-      if adjustedPropertyNames.contains(propertyName) {
+      if options.makeNullablePropertiesOptional,
+        adjustedPropertyNames.contains(propertyName)
+      {
         modifications.append(
           "Removed required entry '\(propertyName)' from \(requiredPath) because " +
           "\(objectPath.appending(key: "properties").appending(key: propertyName)) " +
@@ -354,113 +338,6 @@ private enum JSONPathComponent: CustomStringConvertible {
       return true
     default:
       return false
-    }
-  }
-}
-
-public enum OpenAPISanitizerCommand {
-  public static func run(
-    arguments: [String],
-    log: (String) -> Void = { print($0) }
-  ) throws {
-    let configuration = try Configuration(arguments: arguments)
-    let inputURL = configuration.inputURL
-    let outputURL = configuration.outputURL
-    let data = try Data(contentsOf: inputURL)
-    let report = try OpenAPISanitizer().rewriteWithReport(
-      data: data,
-      options: configuration.options
-    )
-    try write(report.data, to: outputURL)
-
-    if !configuration.isQuiet {
-      for modification in report.modifications {
-        log(modification)
-      }
-    }
-  }
-
-  private static func write(_ data: Data, to outputURL: URL) throws {
-    let temporaryURL = outputURL
-      .deletingLastPathComponent()
-      .appendingPathComponent(".\(UUID().uuidString).tmp")
-
-    try data.write(to: temporaryURL, options: .atomic)
-
-    if FileManager.default.fileExists(atPath: outputURL.path()) {
-      _ = try FileManager.default.replaceItemAt(outputURL, withItemAt: temporaryURL)
-    } else {
-      try FileManager.default.moveItem(at: temporaryURL, to: outputURL)
-    }
-  }
-}
-
-extension OpenAPISanitizerCommand {
-  struct Configuration {
-    let inputURL: URL
-    let outputURL: URL
-    let options: OpenAPISanitizerOptions
-    let isQuiet: Bool
-
-    init(arguments: [String]) throws {
-      var isQuiet = false
-      var isInPlace = false
-      var pruneOrphanRequiredProperties = false
-      var positionalArguments: [String] = []
-
-      for argument in arguments.dropFirst() {
-        switch argument {
-        case "--in-place":
-          isInPlace = true
-        case "--prune-orphan-required":
-          pruneOrphanRequiredProperties = true
-        case "--quiet":
-          isQuiet = true
-        default:
-          guard !argument.hasPrefix("-") else {
-            throw OpenAPISanitizerCommandError.invalidArguments
-          }
-
-          positionalArguments.append(argument)
-        }
-      }
-
-      options = OpenAPISanitizerOptions(
-        pruneOrphanRequiredProperties: pruneOrphanRequiredProperties
-      )
-      self.isQuiet = isQuiet
-
-      if isInPlace {
-        guard positionalArguments.count == 1 else {
-          throw OpenAPISanitizerCommandError.invalidArguments
-        }
-
-        inputURL = URL(fileURLWithPath: positionalArguments[0])
-        outputURL = inputURL
-        return
-      }
-
-      guard positionalArguments.count == 2 else {
-        throw OpenAPISanitizerCommandError.invalidArguments
-      }
-
-      inputURL = URL(fileURLWithPath: positionalArguments[0])
-      outputURL = URL(fileURLWithPath: positionalArguments[1])
-    }
-  }
-}
-
-public enum OpenAPISanitizerCommandError: LocalizedError {
-  case invalidArguments
-
-  public var errorDescription: String? {
-    switch self {
-    case .invalidArguments:
-      """
-      Usage:
-        openapi-sanitizer [--quiet] [--prune-orphan-required] --in-place input.json
-        openapi-sanitizer [--quiet] [--prune-orphan-required] input.json output.json
-      """
     }
   }
 }

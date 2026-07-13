@@ -1,5 +1,5 @@
 import Foundation
-import OpenAPISanitizerCore
+import OpenAPISanitizerCommand
 
 do {
   try OpenAPISanitizerCommand.run(arguments: CommandLine.arguments)

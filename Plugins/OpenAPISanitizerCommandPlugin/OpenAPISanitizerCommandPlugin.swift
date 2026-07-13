@@ -4,9 +4,17 @@ import PackagePlugin
 @main
 struct OpenAPISanitizerCommandPlugin: CommandPlugin {
   func performCommand(context: PluginContext, arguments: [String]) async throws {
-    let tool = try context.tool(named: "OpenAPISanitizerCommandTool")
-    let resolvedArguments = try resolveArguments(arguments, packageDirectory: context.package.directoryURL)
-    try runTool(at: tool.url, arguments: resolvedArguments, currentDirectoryURL: context.package.directoryURL)
+    let tool = try context.tool(named: "openapi-sanitizer")
+    let packageDirectory = context.package.directoryURL
+    let resolvedArguments = try resolveArguments(
+      arguments,
+      packageDirectory: packageDirectory
+    )
+    try runTool(
+      at: tool.url,
+      arguments: resolvedArguments,
+      currentDirectoryURL: packageDirectory
+    )
   }
 }
 
@@ -14,21 +22,32 @@ private func resolveArguments(
   _ arguments: [String],
   packageDirectory: URL
 ) throws -> [String] {
-  let positionalArguments = arguments.filter { !$0.hasPrefix("-") }
+  var positionalArgumentCount = 0
+  var resolvedArguments: [String] = []
+  var iterator = arguments.makeIterator()
 
-  guard !positionalArguments.isEmpty, positionalArguments.count <= 2 else {
+  while let argument = iterator.next() {
+    resolvedArguments.append(argument)
+
+    if argument == "--config" {
+      guard let path = iterator.next() else {
+        throw OpenAPISanitizerCommandPluginError.invalidArguments
+      }
+      resolvedArguments.append(resolvePath(path, relativeTo: packageDirectory).path)
+    } else if !argument.hasPrefix("-") {
+      positionalArgumentCount += 1
+      resolvedArguments[resolvedArguments.count - 1] = resolvePath(
+        argument,
+        relativeTo: packageDirectory
+      ).path
+    }
+  }
+
+  guard positionalArgumentCount > 0, positionalArgumentCount <= 2 else {
     throw OpenAPISanitizerCommandPluginError.invalidArguments
   }
 
-  var resolvedArguments = arguments.map { argument in
-    if argument.hasPrefix("-") {
-      return argument
-    }
-
-    return resolvePath(argument, relativeTo: packageDirectory).path()
-  }
-
-  if positionalArguments.count == 1 && !resolvedArguments.contains("--in-place") {
+  if positionalArgumentCount == 1 && !resolvedArguments.contains("--in-place") {
     resolvedArguments.insert("--in-place", at: 0)
   }
 
@@ -42,7 +61,7 @@ private func resolvePath(_ path: String, relativeTo packageDirectory: URL) -> UR
     return fileURL.standardizedFileURL
   }
 
-  return packageDirectory.appending(path: path).standardizedFileURL
+  return packageDirectory.appendingPathComponent(path).standardizedFileURL
 }
 
 private func runTool(
@@ -71,9 +90,10 @@ enum OpenAPISanitizerCommandPluginError: LocalizedError {
     case .invalidArguments:
       """
       Usage:
-        swift package --allow-writing-to-package-directory sanitize-openapi [--quiet] [--prune-orphan-required] --in-place path/to/openapi.json
-        swift package --allow-writing-to-package-directory sanitize-openapi [--quiet] [--prune-orphan-required] path/to/openapi.json
-        swift package --allow-writing-to-package-directory sanitize-openapi [--quiet] [--prune-orphan-required] input.json output.json
+        swift package --allow-writing-to-package-directory \
+          sanitize-openapi [options] --in-place input.json
+        swift package --allow-writing-to-package-directory \
+          sanitize-openapi [options] input.json output.json
       """
     case .toolFailed(let status):
       "openapi-sanitizer failed with exit status \(status)."

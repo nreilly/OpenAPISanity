@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+@testable import OpenAPISanitizerCommand
 @testable import OpenAPISanitizerCore
 
 struct OpenAPISanitizerTests {
@@ -268,7 +269,10 @@ struct OpenAPISanitizerTests {
       """
     ) as? [String: Any])
 
-    let output = OpenAPISanitizer().rewriteObject(input)
+    let output = OpenAPISanitizer().rewriteObject(
+      input,
+      options: OpenAPISanitizerOptions(makeNullablePropertiesOptional: true)
+    )
     let required = try #require(output["required"] as? [String])
     let pet = try #require((output["properties"] as? [String: Any])?["pet"] as? [String: Any])
 
@@ -298,7 +302,10 @@ struct OpenAPISanitizerTests {
       """
     ) as? [String: Any])
 
-    let output = OpenAPISanitizer().rewriteObject(input)
+    let output = OpenAPISanitizer().rewriteObject(
+      input,
+      options: OpenAPISanitizerOptions(makeNullablePropertiesOptional: true)
+    )
     let required = try #require(output["required"] as? [String])
     let pet = try #require((output["properties"] as? [String: Any])?["pet"] as? [String: Any])
 
@@ -317,6 +324,31 @@ struct OpenAPISanitizerTests {
             "oneOf": [
               { "$ref": "#/components/schemas/Cat" },
               { "$ref": "#/components/schemas/Dog" }
+            ]
+          }
+        },
+        "required": ["pet"]
+      }
+      """
+    ) as? [String: Any])
+
+    let output = OpenAPISanitizer().rewriteObject(input)
+    let required = try #require(output["required"] as? [String])
+
+    #expect(required == ["pet"])
+  }
+
+  @Test
+  func keepsNullablePropertiesRequiredByDefault() throws {
+    let input = try #require(jsonObject(
+      """
+      {
+        "type": "object",
+        "properties": {
+          "pet": {
+            "oneOf": [
+              { "$ref": "#/components/schemas/Cat" },
+              { "type": "null" }
             ]
           }
         },
@@ -440,6 +472,53 @@ struct OpenAPISanitizerTests {
   }
 
   @Test
+  func cliLoadsSanitizerOptionsFromConfigurationFile() throws {
+    let directory = try temporaryDirectory()
+    let inputURL = directory.appending(path: "input.json")
+    let outputURL = directory.appending(path: "output.json")
+    let configurationURL = directory.appending(path: "openapi-sanitizer-config.json")
+
+    try Data(
+      """
+      {
+        "type": "object",
+        "properties": {
+          "pet": {
+            "oneOf": [
+              { "type": "string" },
+              { "type": "null" }
+            ]
+          }
+        },
+        "required": ["pet"]
+      }
+      """.utf8
+    ).write(to: inputURL)
+    try Data(
+      """
+      {
+        "makeNullablePropertiesOptional": true
+      }
+      """.utf8
+    ).write(to: configurationURL)
+
+    try OpenAPISanitizerCommand.run(arguments: [
+      "openapi-sanitizer",
+      "--quiet",
+      "--config",
+      configurationURL.path(),
+      inputURL.path(),
+      outputURL.path(),
+    ])
+
+    let output = try #require(
+      jsonObject(String(decoding: try Data(contentsOf: outputURL), as: UTF8.self))
+        as? [String: Any]
+    )
+    #expect(output["required"] as? [String] == [])
+  }
+
+  @Test
   func libraryCanRewriteJSONInMemory() throws {
     let input = Data(
       """
@@ -463,7 +542,10 @@ struct OpenAPISanitizerTests {
 
     let report = try OpenAPISanitizer().rewriteWithReport(
       data: input,
-      options: OpenAPISanitizerOptions(pruneOrphanRequiredProperties: true)
+      options: OpenAPISanitizerOptions(
+        pruneOrphanRequiredProperties: true,
+        makeNullablePropertiesOptional: true
+      )
     )
     let output = try #require(
       jsonObject(String(decoding: report.data, as: UTF8.self)) as? [String: Any]
