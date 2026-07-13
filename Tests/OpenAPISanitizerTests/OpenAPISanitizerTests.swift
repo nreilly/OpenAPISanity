@@ -482,6 +482,19 @@ struct OpenAPISanitizerTests {
       """
       {
         "type": "object",
+        "parameters": [
+          {
+            "name": "ids",
+            "in": "path",
+            "style": "form",
+            "explode": false,
+            "required": true,
+            "schema": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        ],
         "properties": {
           "pet": {
             "oneOf": [
@@ -497,7 +510,8 @@ struct OpenAPISanitizerTests {
     try Data(
       """
       {
-        "makeNullablePropertiesOptional": true
+        "makeNullablePropertiesOptional": true,
+        "rewritePathParameterFormStyle": true
       }
       """.utf8
     ).write(to: configurationURL)
@@ -516,6 +530,91 @@ struct OpenAPISanitizerTests {
         as? [String: Any]
     )
     #expect(output["required"] as? [String] == [])
+    let parameters = try #require(output["parameters"] as? [[String: Any]])
+    #expect(parameters.first?["style"] as? String == "simple")
+    #expect(parameters.first?["explode"] as? Bool == false)
+  }
+
+  @Test
+  func rewritesPathParameterFormStyleWhenEnabled() throws {
+    let input = try #require(jsonObject(
+      """
+      {
+        "name": "categoryIds",
+        "in": "path",
+        "style": "form",
+        "explode": false,
+        "required": true,
+        "schema": {
+          "type": "array",
+          "items": { "type": "integer" }
+        }
+      }
+      """
+    ) as? [String: Any])
+
+    let output = OpenAPISanitizer().rewriteObject(
+      input,
+      options: OpenAPISanitizerOptions(rewritePathParameterFormStyle: true)
+    )
+
+    #expect(output["style"] as? String == "simple")
+    #expect(output["explode"] as? Bool == false)
+  }
+
+  @Test
+  func rewritesReusablePathParameterFormStyleWhenEnabled() throws {
+    let input = try #require(jsonObject(
+      """
+      {
+        "components": {
+          "parameters": {
+            "CategoryIds": {
+              "name": "categoryIds",
+              "in": "path",
+              "style": "form",
+              "required": true,
+              "schema": { "type": "string" }
+            }
+          }
+        }
+      }
+      """
+    ) as? [String: Any])
+
+    let output = OpenAPISanitizer().rewriteObject(
+      input,
+      options: OpenAPISanitizerOptions(rewritePathParameterFormStyle: true)
+    )
+    let parameter = dictionary(
+      at: ["components", "parameters", "CategoryIds"],
+      in: output
+    )
+
+    #expect(parameter?["style"] as? String == "simple")
+  }
+
+  @Test
+  func leavesParameterStylesUnchangedWhenPolicyDoesNotApply() throws {
+    let pathInput = try #require(jsonObject(
+      """
+      { "name": "ids", "in": "path", "style": "form" }
+      """
+    ) as? [String: Any])
+    let queryInput = try #require(jsonObject(
+      """
+      { "name": "ids", "in": "query", "style": "form" }
+      """
+    ) as? [String: Any])
+
+    let defaultOutput = OpenAPISanitizer().rewriteObject(pathInput)
+    let queryOutput = OpenAPISanitizer().rewriteObject(
+      queryInput,
+      options: OpenAPISanitizerOptions(rewritePathParameterFormStyle: true)
+    )
+
+    #expect(defaultOutput["style"] as? String == "form")
+    #expect(queryOutput["style"] as? String == "form")
   }
 
   @Test

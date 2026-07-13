@@ -76,11 +76,12 @@ you to approve the package plugins when they first run.
 ```json
 {
   "makeNullablePropertiesOptional": false,
-  "pruneOrphanRequiredProperties": false
+  "pruneOrphanRequiredProperties": false,
+  "rewritePathParameterFormStyle": false
 }
 ```
 
-Both options default to `false`.
+All options default to `false`.
 
 `makeNullablePropertiesOptional` removes a property from its parent `required` array when the
 property loses a null union branch. This changes the document contract because a required nullable
@@ -89,6 +90,12 @@ compatibility.
 
 `pruneOrphanRequiredProperties` removes `required` entries that have no corresponding key in the
 sibling `properties` object.
+
+`rewritePathParameterFormStyle` rewrites `style: form` to `style: simple` on Parameter Objects
+whose `in` value is `path`. OpenAPI path parameters allow `simple`, `label`, and `matrix` styles;
+`simple` is the default. For array path parameters with `explode: false`, this preserves the
+intended comma-separated path segment representation while avoiding inconsistent generated client
+and type declarations.
 
 ## Library Usage
 
@@ -103,7 +110,8 @@ let report = try OpenAPISanitizer().rewriteWithReport(
   data: inputData,
   options: OpenAPISanitizerOptions(
     pruneOrphanRequiredProperties: true,
-    makeNullablePropertiesOptional: true
+    makeNullablePropertiesOptional: true,
+    rewritePathParameterFormStyle: true
   )
 )
 
@@ -143,6 +151,7 @@ Equivalent command-line flags are also available:
 swift run openapi-sanitizer \
   --make-nullable-properties-optional \
   --prune-orphan-required \
+  --rewrite-path-parameter-form-style \
   --quiet \
   openapi-source.json \
   openapi.json
@@ -168,6 +177,7 @@ swift package --allow-writing-to-package-directory \
 - All-null unions remain unchanged.
 - Nullable properties remain required unless `makeNullablePropertiesOptional` is enabled.
 - Orphan `required` entries remain unless `pruneOrphanRequiredProperties` is enabled.
+- Path Parameter Objects retain `style: form` unless `rewritePathParameterFormStyle` is enabled.
 
 The traversal applies recursively throughout the JSON document.
 
@@ -185,5 +195,6 @@ Build the real consumer fixture to verify the complete plugin pipeline:
 swift build --package-path IntegrationTests/ConsumerPackage
 ```
 
-The fixture intentionally uses a nullable required property and enables the compatibility policy,
-then compiles code against the generated optional Swift property.
+The fixture enables the nullable-property and path-parameter compatibility policies. It compiles
+code against the generated optional Swift property and generates client and type declarations from
+an array path parameter containing `style: form` and `explode: false`.

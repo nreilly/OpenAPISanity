@@ -8,17 +8,23 @@ public struct OpenAPISanitizerOptions: Codable, Equatable, Sendable {
   /// Whether nullable properties are removed from their parent `required` array.
   public let makeNullablePropertiesOptional: Bool
 
+  /// Whether invalid `form` styles on path parameters are rewritten to `simple`.
+  public let rewritePathParameterFormStyle: Bool
+
   /// Creates a set of sanitisation options.
   ///
   /// - Parameters:
   ///   - pruneOrphanRequiredProperties: Whether orphan `required` entries are removed.
   ///   - makeNullablePropertiesOptional: Whether nullable properties become optional.
+  ///   - rewritePathParameterFormStyle: Whether invalid path parameter styles are rewritten.
   public init(
     pruneOrphanRequiredProperties: Bool = false,
-    makeNullablePropertiesOptional: Bool = false
+    makeNullablePropertiesOptional: Bool = false,
+    rewritePathParameterFormStyle: Bool = false
   ) {
     self.pruneOrphanRequiredProperties = pruneOrphanRequiredProperties
     self.makeNullablePropertiesOptional = makeNullablePropertiesOptional
+    self.rewritePathParameterFormStyle = rewritePathParameterFormStyle
   }
 
   /// Creates options by decoding a configuration document.
@@ -34,6 +40,10 @@ public struct OpenAPISanitizerOptions: Codable, Equatable, Sendable {
       makeNullablePropertiesOptional: try container.decodeIfPresent(
         Bool.self,
         forKey: .makeNullablePropertiesOptional
+      ) ?? false,
+      rewritePathParameterFormStyle: try container.decodeIfPresent(
+        Bool.self,
+        forKey: .rewritePathParameterFormStyle
       ) ?? false
     )
   }

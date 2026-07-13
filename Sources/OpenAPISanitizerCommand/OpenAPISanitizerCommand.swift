@@ -53,6 +53,7 @@ extension OpenAPISanitizerCommand {
       var isInPlace = false
       var makeNullablePropertiesOptional = false
       var pruneOrphanRequiredProperties = false
+      var rewritePathParameterFormStyle = false
       var configurationURL: URL?
       var positionalArguments: [String] = []
       var iterator = arguments.dropFirst().makeIterator()
@@ -70,6 +71,8 @@ extension OpenAPISanitizerCommand {
           makeNullablePropertiesOptional = true
         case "--prune-orphan-required":
           pruneOrphanRequiredProperties = true
+        case "--rewrite-path-parameter-form-style":
+          rewritePathParameterFormStyle = true
         case "--quiet":
           isQuiet = true
         default:
@@ -90,7 +93,9 @@ extension OpenAPISanitizerCommand {
         pruneOrphanRequiredProperties: pruneOrphanRequiredProperties
           || fileOptions.pruneOrphanRequiredProperties,
         makeNullablePropertiesOptional: makeNullablePropertiesOptional
-          || fileOptions.makeNullablePropertiesOptional
+          || fileOptions.makeNullablePropertiesOptional,
+        rewritePathParameterFormStyle: rewritePathParameterFormStyle
+          || fileOptions.rewritePathParameterFormStyle
       )
       self.isQuiet = isQuiet
 
@@ -126,6 +131,7 @@ package enum OpenAPISanitizerCommandError: LocalizedError {
         --config path/to/openapi-sanitizer-config.json
         --make-nullable-properties-optional
         --prune-orphan-required
+        --rewrite-path-parameter-form-style
         --quiet
       """
     }

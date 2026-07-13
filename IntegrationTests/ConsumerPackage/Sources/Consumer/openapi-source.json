@@ -4,7 +4,33 @@
     "title": "OpenAPI Sanitizer Integration Test",
     "version": "1.0.0"
   },
-  "paths": {},
+  "paths": {
+    "/categories/{categoryIds}": {
+      "get": {
+        "operationId": "getCategories",
+        "parameters": [
+          {
+            "name": "categoryIds",
+            "in": "path",
+            "required": true,
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    }
+  },
   "components": {
     "schemas": {
       "Envelope": {

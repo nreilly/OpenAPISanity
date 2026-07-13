@@ -133,6 +133,13 @@ public struct OpenAPISanitizer {
       )
     }
 
+    rewrittenObject = rewritePathParameterFormStyle(
+      in: rewrittenObject,
+      at: path,
+      options: options,
+      modifications: &modifications
+    )
+
     for keyword in ["oneOf", "anyOf"] {
       if let rewritten = rewriteUnion(
         in: rewrittenObject,
@@ -145,6 +152,29 @@ public struct OpenAPISanitizer {
     }
 
     return RewriteResult(node: rewrittenObject, adjustedNullableSchema: false)
+  }
+
+  private func rewritePathParameterFormStyle(
+    in object: [String: Any],
+    at path: JSONPath,
+    options: OpenAPISanitizerOptions,
+    modifications: inout [String]
+  ) -> [String: Any] {
+    guard options.rewritePathParameterFormStyle,
+      object["name"] is String,
+      object["in"] as? String == "path",
+      object["style"] as? String == "form"
+    else {
+      return object
+    }
+
+    var rewrittenObject = object
+    rewrittenObject["style"] = "simple"
+    modifications.append(
+      "Rewrote invalid path parameter style from 'form' to 'simple' at " +
+      "\(path.appending(key: "style"))"
+    )
+    return rewrittenObject
   }
 
   private func rewriteRequired(

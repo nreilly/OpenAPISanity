@@ -1,3 +1,4 @@
 {
-  "makeNullablePropertiesOptional": true
+  "makeNullablePropertiesOptional": true,
+  "rewritePathParameterFormStyle": true
 }
