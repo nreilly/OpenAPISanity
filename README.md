@@ -65,6 +65,10 @@ The plugin sanitises `openapi-source.json` into its build work directory and pas
 Swift OpenAPI Generator. It never rewrites the package source directory, and declared inputs and
 outputs allow incremental builds.
 
+Unchanged sanitised output is left untouched. After the first successful build, SwiftPM and Xcode
+can therefore skip both sanitisation and generation until the source document, either configuration
+file, or one of the tools changes.
+
 The same manifest works when the package is opened or built within Xcode. No scheme pre-action,
 target build phase, neighbouring checkout, or generated `openapi.json` is required. Xcode may ask
 you to approve the package plugins when they first run.

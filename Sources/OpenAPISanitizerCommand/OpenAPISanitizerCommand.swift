@@ -29,6 +29,12 @@ package enum OpenAPISanitizerCommand {
       withIntermediateDirectories: true
     )
 
+    if fileManager.fileExists(atPath: outputURL.path),
+      try Data(contentsOf: outputURL) == data
+    {
+      return
+    }
+
     let temporaryURL = outputDirectory
       .appendingPathComponent(".\(UUID().uuidString).tmp")
     try data.write(to: temporaryURL, options: .atomic)

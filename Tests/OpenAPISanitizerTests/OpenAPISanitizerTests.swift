@@ -217,6 +217,48 @@ struct OpenAPISanitizerTests {
   }
 
   @Test
+  func cliPreservesUnchangedOutputModificationDate() throws {
+    let directory = try temporaryDirectory()
+    let inputURL = directory.appending(path: "input.json")
+    let outputURL = directory.appending(path: "output.json")
+
+    try Data(
+      """
+      {
+        "oneOf": [
+          { "$ref": "#/components/schemas/Cat" },
+          { "type": "null" }
+        ]
+      }
+      """.utf8
+    ).write(to: inputURL)
+
+    let arguments = [
+      "openapi-sanitizer",
+      "--quiet",
+      inputURL.path(),
+      outputURL.path(),
+    ]
+    try OpenAPISanitizerCommand.run(arguments: arguments)
+    try FileManager.default.setAttributes(
+      [.modificationDate: Date(timeIntervalSince1970: 1_000_000)],
+      ofItemAtPath: outputURL.path()
+    )
+    let expectedDate = try #require(
+      FileManager.default.attributesOfItem(atPath: outputURL.path())[.modificationDate]
+        as? Date
+    )
+
+    try OpenAPISanitizerCommand.run(arguments: arguments)
+
+    let actualDate = try #require(
+      FileManager.default.attributesOfItem(atPath: outputURL.path())[.modificationDate]
+        as? Date
+    )
+    #expect(actualDate == expectedDate)
+  }
+
+  @Test
   func cliSupportsInPlaceRewrite() throws {
     let directory = try temporaryDirectory()
     let inputURL = directory.appending(path: "input.json")
